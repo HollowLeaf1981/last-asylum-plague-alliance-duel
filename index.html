@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Alliance Duel Calculation - Last Asylum Plague</title>
+    <style>
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 240 10% 3.9%;
+        --card: 0 0% 100%;
+        --muted: 240 4.8% 95.9%;
+        --muted-foreground: 240 3.8% 46.1%;
+        --border: 240 5.9% 90%;
+        --input: 240 5.9% 90%;
+        --primary: 240 5.9% 10%;
+        --primary-foreground: 0 0% 98%;
+        --accent: 240 4.8% 95.9%;
+        --ring: 240 5% 65%;
+        --radius: 0.5rem;
+        --success: 142 71% 45%;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        background: hsl(240 4.8% 97%);
+        color: hsl(var(--foreground));
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        padding: 2rem 1rem 4rem;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      header {
+        margin-bottom: 1.75rem;
+      }
+      h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: hsl(var(--foreground));
+      }
+      header p {
+        color: hsl(var(--muted-foreground));
+        font-size: 0.9rem;
+        margin-top: 0.35rem;
+      }
+
+      /* Tabs */
+      .tabs-list {
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        background: hsl(var(--muted));
+        padding: 0.28rem;
+        border-radius: var(--radius);
+        margin-bottom: 1.5rem;
+      }
+      .tab {
+        border: none;
+        background: transparent;
+        padding: 0.45rem 0.95rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: hsl(var(--muted-foreground));
+        border-radius: calc(var(--radius) - 0.15rem);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: inherit;
+      }
+      .tab:hover {
+        color: hsl(var(--foreground));
+      }
+      .tab[aria-selected="true"] {
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      }
+      .tab:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
+      }
+
+      /* Card */
+      .card {
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        overflow: hidden;
+      }
+      .card-header {
+        padding: 1.1rem 1.25rem 0.9rem;
+        border-bottom: 1px solid hsl(var(--border));
+      }
+      .card-header h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .card-header .day-tagline {
+        display: block;
+        font-size: 0.9rem;
+        font-style: italic;
+        color: hsl(var(--foreground));
+        opacity: 0.85;
+        margin-top: 0.15rem;
+      }
+      .card-header .day-hint {
+        display: block;
+        font-size: 0.82rem;
+        color: hsl(var(--muted-foreground));
+        margin-top: 0.3rem;
+      }
+
+      /* Table */
+      .table-wrap {
+        width: 100%;
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+      thead th {
+        text-align: left;
+        font-weight: 500;
+        color: hsl(var(--muted-foreground));
+        padding: 0.6rem 1.25rem;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border-bottom: 1px solid hsl(var(--border));
+        background: hsl(240 4.8% 98.5%);
+      }
+      th.num,
+      td.num {
+        text-align: right;
+      }
+      tbody td {
+        padding: 0.5rem 1.25rem;
+        border-bottom: 1px solid hsl(var(--border));
+        vertical-align: middle;
+      }
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+      tbody tr:hover {
+        background: hsl(240 4.8% 98.5%);
+      }
+      .task-name {
+        font-weight: 500;
+        color: hsl(var(--foreground));
+        max-width: 340px;
+      }
+
+      input[type="number"] {
+        width: 110px;
+        padding: 0.4rem 0.55rem;
+        border: 1px solid hsl(var(--input));
+        border-radius: calc(var(--radius) - 0.15rem);
+        font-size: 0.85rem;
+        font-family: inherit;
+        text-align: right;
+        background: hsl(var(--background));
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+        -moz-appearance: textfield;
+      }
+      input[type="number"]::-webkit-outer-spin-button,
+      input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"]:focus {
+        outline: none;
+        border-color: hsl(var(--ring));
+        box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18);
+      }
+      .row-total {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .row-total.zero {
+        color: hsl(var(--muted-foreground));
+        font-weight: 500;
+      }
+
+      /* Summary */
+      .summary {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1.5rem;
+      }
+      .stat {
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        padding: 1.1rem 1.25rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      }
+      .stat .label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: hsl(var(--muted-foreground));
+        margin-bottom: 0.35rem;
+      }
+      .stat .value {
+        font-size: 1.9rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+      .stat .sub {
+        font-size: 0.82rem;
+        color: hsl(var(--muted-foreground));
+        margin-top: 0.3rem;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.2rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: hsl(var(--muted));
+        color: hsl(var(--foreground));
+      }
+      .badge.phased {
+        background: hsl(var(--success) / 0.12);
+        color: hsl(142 71% 30%);
+      }
+
+      .actions {
+        display: flex;
+        gap: 0.6rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        font-family: inherit;
+        border-radius: calc(var(--radius) - 0.1rem);
+        border: 1px solid hsl(var(--border));
+        background: hsl(var(--background));
+        color: hsl(var(--foreground));
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .btn:hover {
+        background: hsl(var(--muted));
+      }
+      .btn:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
+      }
+
+      /* Phase progress bar */
+      .ladder {
+        margin-top: 1.5rem;
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
+        border-radius: var(--radius);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        padding: 1.25rem 1.4rem 1.6rem;
+      }
+      .ladder h3 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 1.4rem;
+      }
+
+      .progress-track {
+        position: relative;
+        height: 18px;
+        border-radius: 999px;
+        background: hsl(var(--muted));
+        overflow: visible;
+      }
+      .progress-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 0%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, hsl(142 68% 52%), hsl(142 71% 40%));
+        box-shadow: 0 0 0 1px hsl(142 71% 35% / 0.25) inset;
+        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .progress-markers {
+        position: absolute;
+        inset: 0;
+      }
+      .marker {
+        position: absolute;
+        top: -4px;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 26px;
+        background: hsl(var(--border));
+        border-radius: 2px;
+      }
+      .marker.reached {
+        background: hsl(142 71% 32%);
+      }
+      .marker-dot {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: hsl(var(--background));
+        border: 2px solid hsl(var(--border));
+        transition: all 0.3s ease;
+      }
+      .marker-dot.reached {
+        border-color: hsl(142 71% 35%);
+        background: hsl(142 71% 45%);
+      }
+      .marker-dot.current {
+        box-shadow: 0 0 0 4px hsl(142 71% 45% / 0.25);
+        transform: translate(-50%, -50%) scale(1.15);
+      }
+
+      @media (max-width: 560px) {
+        .summary {
+          grid-template-columns: 1fr;
+        }
+        .task-name {
+          max-width: 200px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Last Asylum - Alliance Dual Calculation</h1>
+        <p>Daily Task Point Estimator</p>
+      </header>
+
+      <div class="tabs-list" role="tablist" id="tabs"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 id="dayTitle">Day 1</h2>
+          <span class="day-tagline" id="dayTagline"></span>
+          <span class="day-hint"
+            >Edit the points per task to match your account, then enter
+            quantities.</span
+          >
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Task</th>
+                <th class="num">Points / item</th>
+                <th class="num">Quantity</th>
+                <th class="num">Total</th>
+              </tr>
+            </thead>
+            <tbody id="taskBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="stat">
+          <div class="label">Total points</div>
+          <div class="value" id="totalPoints">0</div>
+          <div class="sub" id="totalSub">Enter quantities to begin</div>
+        </div>
+        <div class="stat">
+          <div class="label">Phase reached</div>
+          <div class="value" id="phaseValue">—</div>
+          <div class="sub" id="phaseSub"></div>
+        </div>
+      </div>
+
+      <div class="ladder">
+        <h3>Phase progress</h3>
+        <div class="progress" id="progress">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-markers" id="progressMarkers"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="resetQty">Reset quantities (this day)</button>
+        <button class="btn" id="resetPoints">
+          Reset points to defaults (this day)
+        </button>
+      </div>
+    </div>
+
+    <script>
+      /* ---------- Config ---------- */
+      const PHASES = [
+        { phase: 1, min: 38000 },
+        { phase: 2, min: 145000 },
+        { phase: 3, min: 550000 },
+        { phase: 4, min: 650000 },
+        { phase: 5, min: 1020000 },
+        { phase: 6, min: 2280000 },
+        { phase: 7, min: 2630000 },
+        { phase: 8, min: 3620000 },
+        { phase: 9, min: 7190000 },
+      ];
+
+      const DAYS = [
+        {
+          day: 1,
+          title: "Monday · Feed the Bird",
+          desc: "Fatten up that Raven.",
+          tasks: [
+            {
+              id: "d1_pack",
+              name: "Buy a Pack containing Diamonds [1 Diamond]",
+              points: 30.0,
+            },
+            {
+              id: "d1_epigraph",
+              name: "Get 1 UR Epigraph for each Epigraph Chest Opened",
+              points: 2812.5,
+            },
+            {
+              id: "d1_antitoxin",
+              name: "Use 660 Antitoxins",
+              points: 2.5,
+              per: 660,
+            },
+            {
+              id: "d1_falcon",
+              name: "Complete Falcon Quest Once",
+              points: 30000,
+            },
+            {
+              id: "d1_raven_essence",
+              name: "Consume 1 Raven Essence",
+              points: 6250,
+            },
+            { id: "d1_stamina", name: "Consume 1 Stamina", points: 375.0 },
+            {
+              id: "d1_raven_fruit",
+              name: "Consume 1 Raven Fruit",
+              points: 7.5,
+            },
+            {
+              id: "d1_grain",
+              name: "Gather 100 Grain",
+              points: 12.5,
+              per: 100,
+            },
+            {
+              id: "d1_timber",
+              name: "Gather 100 Timber",
+              points: 12.5,
+              per: 100,
+            },
+            { id: "d1_herbs", name: "Gather 60 Herbs", points: 12.5, per: 60 },
+          ],
+        },
+        {
+          day: 2,
+          title: "Tuesday · Construction Day",
+          desc: "Hit the hammer.",
+          tasks: [
+            {
+              id: "d2_pack",
+              name: "Buy a Pack containing Diamonds [1 Diamond]",
+              points: 30.0,
+            },
+            {
+              id: "d2_wpn_shard",
+              name: "Consume 1 Excl. Wpn. Shard",
+              points: 25000,
+            },
+            {
+              id: "d2_construction",
+              name: "Use 1 Construction Speedup",
+              points: 150,
+            },
+            {
+              id: "d2_building_might",
+              name: "Increase 1 Building Might",
+              points: 30,
+            },
+            {
+              id: "d2_convert",
+              name: "Execute 1 UR Convert Operation",
+              points: 225000,
+            },
+            { id: "d2_caravan", name: "Dispatch a UR Caravan", points: 300000 },
+            { id: "d2_survivor", name: "Recruit Survivor once", points: 4500 },
+          ],
+        },
+        {
+          day: 3,
+          title: "Wednesday · Research",
+          desc: "Use your Tech Scrolls and open the Raven Boxes.",
+          tasks: [
+            {
+              id: "d3_pack",
+              name: "Buy a Pack containing Diamonds [1 Diamond]",
+              points: 30.0,
+            },
+            {
+              id: "d3_gear1",
+              name: "For each Lv.1 Raven Gear Chest Opened",
+              points: 2750,
+            },
+            {
+              id: "d3_gear2",
+              name: "For each Lv.2 Raven Gear Chest Opened",
+              points: 8250,
+            },
+            {
+              id: "d3_gear3",
+              name: "For each Lv.3 Raven Gear Chest Opened",
+              points: 25000,
+            },
+            {
+              id: "d3_gear4",
+              name: "For each Lv.4 Raven Gear Chest Opened",
+              points: 75000,
+            },
+            {
+              id: "d3_gear5",
+              name: "For each Lv.5 Raven Gear Chest Opened",
+              points: 225000,
+            },
+            {
+              id: "d3_gear6",
+              name: "For each Lv.6 Raven Gear Chest Opened",
+              points: 675000,
+            },
+            {
+              id: "d3_gear7",
+              name: "For each Lv.7 Raven Gear Chest Opened",
+              points: 2025000,
+            },
+            {
+              id: "d3_research",
+              name: "Use 1m Research Speedup",
+              points: 150.0,
+            },
+            {
+              id: "d3_tech_might",
+              name: "Increase 1 Tech Might",
+              points: 30.0,
+            },
+            { id: "d3_study", name: "Consume 1 Study Scroll", points: 750 },
+            {
+              id: "d3_falcon",
+              name: "Complete Falcon Quest Once",
+              points: 30000,
+            },
+          ],
+        },
+        {
+          day: 4,
+          title: "Thursday · Hero Boost",
+          desc: "Beef up your Heroes.",
+          tasks: [
+            {
+              id: "d4_pack",
+              name: "Buy a Pack containing Diamonds [1 Diamond]",
+              points: 30.0,
+            },
+            {
+              id: "d4_awaken",
+              name: "Consume 1 Hero Awaken Shard or Awaken Omni Shard",
+              points: 25000,
+            },
+            { id: "d4_recruit_hero", name: "Recruit Hero Once", points: 4500 },
+            {
+              id: "d4_antitoxin",
+              name: "Use 660 Antitoxin",
+              points: 2.5,
+              per: 660,
+            },
+            {
+              id: "d4_ur_shard",
+              name: "Consume 1 UR Hero Shard",
+              points: 25000,
+            },
+            {
+              id: "d4_ssr_shard",
+              name: "Consume 1 SSR Hero Shard",
+              points: 8750,
+            },
+            {
+              id: "d4_sr_shard",
+              name: "Consume 1 SR Hero Shard",
+              points: 2500,
+            },
+            { id: "d4_skill_badge", name: "Use 1 Skill Badge", points: 25 },
+          ],
+        },
+        {
+          day: 5,
+          title: "Friday · Train the Troops",
+          desc: "Prepare for war.",
+          tasks: [
+            {
+              id: "d5_pack",
+              name: "Buy a Pack containing Diamonds [1 Diamond]",
+              points: 30.0,
+            },
+            { id: "d5_train1", name: "Train 1 Lv1 Soldier", points: 60 },
+            { id: "d5_train2", name: "Train 2 Lv1 Soldier", points: 90 },
+            { id: "d5_train3", name: "Train 3 Lv1 Soldier", points: 120 },
+            { id: "d5_train4", name: "Train 4 Lv1 Soldier", points: 150 },
+            { id: "d5_train5", name: "Train 5 Lv1 Soldier", points: 180 },
+            { id: "d5_train6", name: "Train 6 Lv1 Soldier", points: 210 },
+            { id: "d5_train7", name: "Train 7 Lv1 Soldier", points: 240 },
+            { id: "d5_train8", name: "Train 8 Lv1 Soldier", points: 270 },
+            { id: "d5_train9", name: "Train 9 Lv1 Soldier", points: 300 },
+            { id: "d5_train10", name: "Train 10 Lv1 Soldier", points: 330 },
+            {
+              id: "d5_training_boost",
+              name: "Use 1m Training Boost",
+              points: 150,
+            },
+            {
+              id: "d5_building_might",
+              name: "Increase 1 Building Might",
+              points: 30,
+            },
+            { id: "d5_tech_might", name: "Increase 1 Tech Might", points: 30 },
+            { id: "d5_research", name: "Use 1m Research Speedup", points: 150 },
+            {
+              id: "d5_construction",
+              name: "Use 1m Construction Speedup",
+              points: 150,
+            },
+            {
+              id: "d5_falcon",
+              name: "Complete Falcon Quest Once",
+              points: 30000,
+            },
+          ],
+        },
+        {
+          day: 6,
+          title: "Saturday · War Day",
+          desc: "This is Sparta.",
+          tasks: [
+            {
+              id: "d6_pack",
+              name: "Buy a Pack containing Diamonds [1 Diamond]",
+              points: 30.0,
+            },
+            {
+              id: "d6_construction",
+              name: "Use 1m Construction Speedup",
+              points: 150,
+            },
+            { id: "d6_research", name: "Use 1m Research Speedup", points: 150 },
+            {
+              id: "d6_training_boost",
+              name: "Use 1m Training Boost",
+              points: 150,
+            },
+            {
+              id: "d6_detail1",
+              name: "For each Lv.1 soldier detailed (specific match)",
+              points: 30,
+            },
+            {
+              id: "d6_detail2",
+              name: "For each Lv.2 soldier detailed (specific match)",
+              points: 45,
+            },
+            {
+              id: "d6_detail3",
+              name: "For each Lv.3 soldier detailed (specific match)",
+              points: 60,
+            },
+            {
+              id: "d6_detail4",
+              name: "For each Lv.4 soldier detailed (specific match)",
+              points: 75,
+            },
+            {
+              id: "d6_detail5",
+              name: "For each Lv.5 soldier detailed (specific match)",
+              points: 90,
+            },
+            {
+              id: "d6_detail6",
+              name: "For each Lv.6 soldier detailed (specific match)",
+              points: 105,
+            },
+            {
+              id: "d6_detail7",
+              name: "For each Lv.7 soldier detailed (specific match)",
+              points: 120,
+            },
+            {
+              id: "d6_detail8",
+              name: "For each Lv.8 soldier detailed (specific match)",
+              points: 135,
+            },
+            {
+              id: "d6_detail9",
+              name: "For each Lv.9 soldier detailed (specific match)",
+              points: 150,
+            },
+            {
+              id: "d6_detail10",
+              name: "For each Lv.10 soldier detailed (specific match)",
+              points: 165,
+            },
+            {
+              id: "d6_defeat1",
+              name: "For each Lv.1 soldier defeated",
+              points: 6,
+            },
+            {
+              id: "d6_defeat2",
+              name: "For each Lv.2 soldier defeated",
+              points: 9,
+            },
+            {
+              id: "d6_defeat3",
+              name: "For each Lv.3 soldier defeated",
+              points: 12,
+            },
+            {
+              id: "d6_defeat4",
+              name: "For each Lv.4 soldier defeated",
+              points: 15,
+            },
+            {
+              id: "d6_defeat5",
+              name: "For each Lv.5 soldier defeated",
+              points: 18,
+            },
+            {
+              id: "d6_defeat6",
+              name: "For each Lv.6 soldier defeated",
+              points: 21,
+            },
+            {
+              id: "d6_defeat7",
+              name: "For each Lv.7 soldier defeated",
+              points: 24,
+            },
+            {
+              id: "d6_defeat8",
+              name: "For each Lv.8 soldier defeated",
+              points: 27,
+            },
+            {
+              id: "d6_defeat9",
+              name: "For each Lv.9 soldier defeated",
+              points: 30,
+            },
+            {
+              id: "d6_defeat10",
+              name: "For each Lv.10 soldier defeated",
+              points: 33,
+            },
+            { id: "d6_lost1", name: "For each Lv.1 soldier lost", points: 5.0 },
+            { id: "d6_lost2", name: "For each Lv.2 soldier lost", points: 7.5 },
+            {
+              id: "d6_lost3",
+              name: "For each Lv.3 soldier lost",
+              points: 10.0,
+            },
+            {
+              id: "d6_lost4",
+              name: "For each Lv.4 soldier lost",
+              points: 12.5,
+            },
+            {
+              id: "d6_lost5",
+              name: "For each Lv.5 soldier lost",
+              points: 15.0,
+            },
+            {
+              id: "d6_lost6",
+              name: "For each Lv.6 soldier lost",
+              points: 17.5,
+            },
+            {
+              id: "d6_lost7",
+              name: "For each Lv.7 soldier lost",
+              points: 20.0,
+            },
+            {
+              id: "d6_lost8",
+              name: "For each Lv.8 soldier lost",
+              points: 22.5,
+            },
+            {
+              id: "d6_lost9",
+              name: "For each Lv.9 soldier lost",
+              points: 25.0,
+            },
+            {
+              id: "d6_lost10",
+              name: "For each Lv.10 soldier lost",
+              points: 27.5,
+            },
+            { id: "d6_healing", name: "Use 1m Healing Speedup", points: 150 },
+            {
+              id: "d6_convert",
+              name: "Execute 1 UR Convert Operation",
+              points: 225000,
+            },
+            { id: "d6_caravan", name: "Dispatch a UR Caravan", points: 300000 },
+          ],
+        },
+      ];
+
+      /* ---------- State / storage ---------- */
+      const LS_KEY = "allianceDualCalc_v1";
+      let store = loadStore();
+      let activeDay = 1;
+
+      function loadStore() {
+        try {
+          return JSON.parse(localStorage.getItem(LS_KEY)) || {};
+        } catch {
+          return {};
+        }
+      }
+      function saveStore() {
+        localStorage.setItem(LS_KEY, JSON.stringify(store));
+      }
+
+      function getState(dayNum, taskId) {
+        const d = store["day" + dayNum] || {};
+        return d[taskId] || {};
+      }
+      function setState(dayNum, taskId, patch) {
+        const key = "day" + dayNum;
+        store[key] = store[key] || {};
+        store[key][taskId] = Object.assign({}, store[key][taskId], patch);
+        saveStore();
+      }
+
+      /* ---------- Formatting ---------- */
+      const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+      const fmtInt = new Intl.NumberFormat("en-US");
+
+      /* ---------- Rendering ---------- */
+      function renderTabs() {
+        const el = document.getElementById("tabs");
+        el.innerHTML = "";
+        DAYS.forEach((d) => {
+          const b = document.createElement("button");
+          b.className = "tab";
+          b.role = "tab";
+          b.textContent = "Day " + d.day;
+          b.setAttribute(
+            "aria-selected",
+            d.day === activeDay ? "true" : "false",
+          );
+          b.addEventListener("click", () => {
+            activeDay = d.day;
+            renderTabs();
+            renderDay();
+          });
+          el.appendChild(b);
+        });
+      }
+
+      function currentDay() {
+        return DAYS.find((d) => d.day === activeDay);
+      }
+
+      function pointsFor(task) {
+        const s = getState(activeDay, task.id);
+        return s.points === undefined || s.points === null || s.points === ""
+          ? task.points
+          : Number(s.points);
+      }
+      function qtyFor(task) {
+        const s = getState(activeDay, task.id);
+        return Number(s.qty) || 0;
+      }
+      // Batched tasks (per > 1): quantity is actual items used, points are per batch.
+      function rowTotal(task) {
+        const per = task.per && task.per > 0 ? task.per : 1;
+        return (pointsFor(task) * qtyFor(task)) / per;
+      }
+
+      function renderDay() {
+        const day = currentDay();
+        document.getElementById("dayTitle").textContent =
+          "Day " + activeDay + " · " + day.title.split(" · ")[0];
+        document.getElementById("dayTagline").textContent =
+          day.title.split(" · ")[1] + " — " + day.desc;
+        const body = document.getElementById("taskBody");
+        body.innerHTML = "";
+        currentDay().tasks.forEach((task) => {
+          const tr = document.createElement("tr");
+
+          const tdName = document.createElement("td");
+          tdName.className = "task-name";
+          tdName.textContent = task.name;
+
+          const tdPts = document.createElement("td");
+          tdPts.className = "num";
+          const ptsInput = document.createElement("input");
+          ptsInput.type = "number";
+          ptsInput.step = "any";
+          ptsInput.min = "0";
+          ptsInput.value = pointsFor(task);
+          ptsInput.addEventListener("input", () => {
+            setState(activeDay, task.id, { points: ptsInput.value });
+            recalcRow(task, tr);
+            recalcTotals();
+          });
+          tdPts.appendChild(ptsInput);
+
+          const tdQty = document.createElement("td");
+          tdQty.className = "num";
+          const qtyInput = document.createElement("input");
+          qtyInput.type = "number";
+          qtyInput.step = "1";
+          qtyInput.min = "0";
+          qtyInput.value = qtyFor(task) || "";
+          qtyInput.placeholder = "0";
+          qtyInput.addEventListener("input", () => {
+            setState(activeDay, task.id, { qty: qtyInput.value });
+            recalcRow(task, tr);
+            recalcTotals();
+          });
+          tdQty.appendChild(qtyInput);
+
+          const tdTotal = document.createElement("td");
+          tdTotal.className = "num row-total";
+
+          tr.append(tdName, tdPts, tdQty, tdTotal);
+          body.appendChild(tr);
+          recalcRow(task, tr);
+        });
+        recalcTotals();
+      }
+
+      function recalcRow(task, tr) {
+        const total = rowTotal(task);
+        const cell = tr.querySelector(".row-total");
+        cell.textContent = fmt.format(total);
+        cell.classList.toggle("zero", total === 0);
+      }
+
+      function phaseFor(total) {
+        let reached = null;
+        for (const p of PHASES) if (total >= p.min) reached = p.phase;
+        return reached;
+      }
+
+      function recalcTotals() {
+        let total = 0;
+        currentDay().tasks.forEach((t) => {
+          total += rowTotal(t);
+        });
+
+        document.getElementById("totalPoints").textContent = fmt.format(total);
+
+        const phase = phaseFor(total);
+        const phaseValueEl = document.getElementById("phaseValue");
+        const phaseSubEl = document.getElementById("phaseSub");
+        const totalSubEl = document.getElementById("totalSub");
+
+        if (phase === null) {
+          phaseValueEl.textContent = "—";
+          const need = PHASES[0].min - total;
+          phaseSubEl.textContent =
+            need > 0 ? fmt.format(need) + " to Phase 1" : "";
+          totalSubEl.textContent = "No phase reached yet";
+        } else {
+          phaseValueEl.textContent = "Phase " + phase;
+          const next = PHASES.find((p) => p.phase === phase + 1);
+          if (next) {
+            phaseSubEl.textContent =
+              fmt.format(next.min - total) + " to Phase " + next.phase;
+          } else {
+            phaseSubEl.textContent = "Max phase reached";
+          }
+          totalSubEl.textContent =
+            "Phase " +
+            phase +
+            " threshold: " +
+            fmtInt.format(PHASES.find((p) => p.phase === phase).min);
+        }
+
+        renderLadder(total, phase);
+      }
+
+      function renderLadder(total, currentPhase) {
+        // Linear scale: markers sit at their true point value across the bar,
+        // spanning 4%..100% where 0 pts = 0 and the max threshold = 100%.
+        const n = PHASES.length;
+        const maxMin = PHASES[n - 1].min;
+        const markers = document.getElementById("progressMarkers");
+        const fill = document.getElementById("progressFill");
+        markers.innerHTML = "";
+
+        // position (in %) for a given point value on the linear scale
+        const pos = (v) => 4 + 96 * (v / maxMin);
+
+        PHASES.forEach((p, i) => {
+          const reached = total >= p.min;
+          const isCurrent = p.phase === currentPhase;
+          const x = pos(p.min);
+
+          const m = document.createElement("div");
+          m.className = "marker" + (reached ? " reached" : "");
+          m.style.left = x + "%";
+          markers.appendChild(m);
+
+          const dot = document.createElement("div");
+          dot.className =
+            "marker-dot" +
+            (reached ? " reached" : "") +
+            (isCurrent ? " current" : "");
+          dot.style.left = x + "%";
+          dot.title = "Phase " + p.phase + " · " + fmtInt.format(p.min);
+          markers.appendChild(dot);
+        });
+
+        // Fill width on the same linear scale, clamped to the bar.
+        let width;
+        if (total <= 0) width = 0;
+        else if (total >= maxMin) width = 100;
+        else width = pos(total);
+        fill.style.width = width + "%";
+      }
+
+      /* ---------- Actions ---------- */
+      document.getElementById("resetQty").addEventListener("click", () => {
+        const key = "day" + activeDay;
+        if (store[key]) {
+          Object.keys(store[key]).forEach((id) => {
+            if (store[key][id]) delete store[key][id].qty;
+          });
+          saveStore();
+        }
+        renderDay();
+      });
+      document.getElementById("resetPoints").addEventListener("click", () => {
+        const key = "day" + activeDay;
+        if (store[key]) {
+          Object.keys(store[key]).forEach((id) => {
+            if (store[key][id]) delete store[key][id].points;
+          });
+          saveStore();
+        }
+        renderDay();
+      });
+
+      /* ---------- Init ---------- */
+      renderTabs();
+      renderDay();
+    </script>
+  </body>
+</html>
